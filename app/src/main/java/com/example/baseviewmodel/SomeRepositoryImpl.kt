@@ -7,7 +7,7 @@ class SomeRepositoryImpl : SomeRepository {
     var secondIsSuccess = true
 
     override suspend fun getFirstTestData(): Result<FirstModel> {
-        delay(1000)
+        delay(500)
         return if (firstIsSuccess) {
             Result.success(FirstModel("first Successful Data"))
         } else {
@@ -16,7 +16,7 @@ class SomeRepositoryImpl : SomeRepository {
     }
 
     override suspend fun getSecondTestData(): Result<SecondModel> {
-        delay(3000)
+        delay(1000)
         return if (secondIsSuccess) {
             Result.success(SecondModel("Second Successful Data"))
         } else {
