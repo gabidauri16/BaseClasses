@@ -1,5 +1,7 @@
-package com.example.baseviewmodel
+package com.example.baseviewmodel.repo
 
+import com.example.baseviewmodel.main.FirstModel
+import com.example.baseviewmodel.main.SecondModel
 import kotlinx.coroutines.delay
 
 class SomeRepositoryImpl : SomeRepository {

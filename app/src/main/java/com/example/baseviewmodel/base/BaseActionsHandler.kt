@@ -1,4 +1,4 @@
-package com.example.baseviewmodel
+package com.example.baseviewmodel.base
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility

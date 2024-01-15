@@ -1,4 +1,4 @@
-package com.example.baseviewmodel
+package com.example.baseviewmodel.main
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -16,6 +16,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import com.example.baseviewmodel.base.BaseActionsHandler
+import com.example.baseviewmodel.base.BaseViewModel
+import com.example.baseviewmodel.base.ViewState
+import com.example.baseviewmodel.base.takeAs
 import com.example.baseviewmodel.ui.theme.BaseViewModelTheme
 import org.koin.androidx.compose.koinViewModel
 

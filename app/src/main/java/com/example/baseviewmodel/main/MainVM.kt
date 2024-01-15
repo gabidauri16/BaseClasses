@@ -1,4 +1,8 @@
-package com.example.baseviewmodel
+package com.example.baseviewmodel.main
+
+import com.example.baseviewmodel.base.BaseViewModel
+import com.example.baseviewmodel.base.ViewState
+import com.example.baseviewmodel.repo.SomeRepository
 
 class MainVM(
     private val someRepository: SomeRepository
@@ -17,6 +21,7 @@ class MainVM(
             GetFirstDataAction -> getFirstData()
             GetSecondDataAction -> getSecondData()
             GetBothDataAction -> getBothData()
+            GoToSecondScreenAction -> emitAction(GoToSecondScreenAction)
         }
     }
 
@@ -40,6 +45,7 @@ class MainVM(
     object GetFirstDataAction : Action()
     object GetSecondDataAction : Action()
     object GetBothDataAction : Action()
+    object GoToSecondScreenAction : Action()
 }
 
 data class FirstModel(
