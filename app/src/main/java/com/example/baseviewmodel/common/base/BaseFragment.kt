@@ -1,18 +1,13 @@
-package com.example.baseviewmodel.base
+package com.example.baseviewmodel.common.base
 
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleOwner
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
 import androidx.viewbinding.ViewBinding
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.launch
+import com.example.baseviewmodel.common.extensions.launchStarted
+import com.example.baseviewmodel.common.extensions.takeAs
 
 typealias Inflater<T> = (inflater: LayoutInflater, view: ViewGroup?, attach: Boolean) -> T
 
@@ -43,8 +38,8 @@ abstract class BaseFragment<VB : ViewBinding, VM : BaseViewModel>(
     }
 
     private fun observeActions() {
-        collectAction<BaseViewModel.Action.Loading> { onLoadingAction(it.loading) }
-        collectAction<BaseViewModel.Action.Message> { onMessageAction(it.msg) }
+        collectAction<Action.Loading> { onLoadingAction(it.loading) }
+        collectAction<Action.Message> { onMessageAction(it.msg) }
     }
 
     protected open fun onMessageAction(msg: String) {}
@@ -59,43 +54,35 @@ abstract class BaseFragment<VB : ViewBinding, VM : BaseViewModel>(
         _binding = null
     }
 
-    fun withBinding(block: VB.() -> Unit) = with(binding) { block(this) }
+    protected inline fun withBinding(block: VB.() -> Unit) = with(binding) { block(this) }
+    protected inline fun withVM(block: VM.() -> Unit) = with(provideViewModel()) { block(this) }
 
     /** collect action by type reference */
-    protected inline fun <reified T : BaseViewModel.Action> collectAction(crossinline block: (T) -> Unit) {
-        launchStarted {
-            provideViewModel().action.collect {
-                if (it is T) {
-                    block(it as T)
-                }
+    protected inline fun <reified T : Action> collectAction(crossinline block: (T) -> Unit) {
+        withVM {
+            launchStarted {
+                action.collect { if (it is T) block(it) }
             }
         }
     }
 
     /** collect nonNullable StateFlow of corresponding state by it's index */
     protected fun <T> collect(stateIndex: Int, block: T.() -> Unit) {
-        launchStarted {
-            viewModel.stateFlowList[stateIndex].takeAs<T>()?.collect {
-                it.data?.let { dataType -> block(dataType) }
+        withVM {
+            launchStarted {
+                stateFlowList[stateIndex].takeAs<T>()?.collect {
+                    it.data?.let { dataType -> block(dataType) }
+                }
             }
         }
     }
 
     /** collect nullable StateFlow of corresponding state by its index */
     protected fun <T> collectNullable(stateIndex: Int, block: T?.() -> Unit) {
-        launchStarted {
-            viewModel.stateFlowList[stateIndex].takeAs<T>()?.collect {
-                block(it.data)
+        withVM {
+            launchStarted {
+                stateFlowList[stateIndex].takeAs<T>()?.collect { block(it.data) }
             }
-        }
-    }
-}
-
-/** launch in Started State */
-fun LifecycleOwner.launchStarted(block: suspend CoroutineScope.() -> (Unit)): Job {
-    return this.lifecycleScope.launch {
-        repeatOnLifecycle(Lifecycle.State.STARTED) {
-            block.invoke(this)
         }
     }
 }

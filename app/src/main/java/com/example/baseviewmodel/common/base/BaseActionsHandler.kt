@@ -1,4 +1,4 @@
-package com.example.baseviewmodel.base
+package com.example.baseviewmodel.common.base
 
 import android.widget.Toast
 import androidx.compose.animation.AnimatedVisibility
@@ -19,7 +19,7 @@ import kotlinx.coroutines.flow.SharedFlow
 /** handles showing message and showing loader. */
 @Composable
 fun BaseActionsHandler(
-    action: SharedFlow<BaseViewModel.Action>,
+    action: SharedFlow<Action>,
     showLoader: Boolean = true
 ) {
     val context = LocalContext.current
@@ -27,11 +27,11 @@ fun BaseActionsHandler(
     LaunchedEffect(key1 = true) {
         action.collect {
             when (it) {
-                is BaseViewModel.Action.Message -> {
+                is Action.Message -> {
                     Toast.makeText(context, it.msg, Toast.LENGTH_SHORT).show()
                 }
 
-                is BaseViewModel.Action.Loading -> {
+                is Action.Loading -> {
                     if (showLoader) loadingState.value = it.loading
 
                 }

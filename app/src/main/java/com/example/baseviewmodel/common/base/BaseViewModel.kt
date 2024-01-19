@@ -1,9 +1,11 @@
-package com.example.baseviewmodel.base
+package com.example.baseviewmodel.common.base
 
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.baseviewmodel.common.extensions.postChange
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -31,14 +33,20 @@ data class ViewState<T : Any?>(val data: T? = null)
  *  @see takeAs to get corresponding state on the uiSide.
  *
  * */
-abstract class BaseViewModel(val states: List<Any>) : ViewModel() {
+abstract class BaseViewModel(
+    val states: List<Any>
+) : ViewModel() {
     protected val _action = MutableSharedFlow<Action>()
     val action = _action.asSharedFlow()
+
+    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        Action.Message(throwable.message ?: "An unexpected error occurred").emit()
+    }
 
     /** for Compose */
     val stateList = states.map { it.createState() }
 
-    /** for XMl */
+    /** for XML */
     val stateFlowList = states.map { it.createStateFlow() }
 
 
@@ -58,17 +66,27 @@ abstract class BaseViewModel(val states: List<Any>) : ViewModel() {
      *  also handles to emit message(or Error) and loading Actions.
      *  @see call
      * */
-    protected fun launch(block: suspend CoroutineScope.() -> Unit) {
-        try {
-            viewModelScope.launch {
-                _action.emit(Action.Loading())
-                block.invoke(this)
-                _action.emit(Action.Loading(false))
-            }
-        } catch (e: Exception) {
-            viewModelScope.launch {
-                _action.emit(Action.Loading(false))
-                _action.emit(Action.Message(e.message ?: "some error"))
+    protected fun launch(
+        emitLoadingAction: Boolean = true,
+        emitErrorMsgAction: Boolean = false,
+        onStart: (() -> Unit)? = null,
+        onFinish: (() -> Unit)? = null,
+        onException: ((Exception) -> Unit)? = null,
+        block: suspend CoroutineScope.() -> Unit,
+    ) {
+        viewModelScope.launch {
+            try {
+                launch(coroutineContext + coroutineExceptionHandler) {
+                    onStart?.invoke()
+                    if (emitLoadingAction) emitAction(Action.Loading())
+                    block.invoke(this)
+                    if (emitLoadingAction) emitAction(Action.Loading(false))
+                    onFinish?.invoke()
+                }
+            } catch (e: Exception) {
+                onException?.invoke(e)
+                if (emitLoadingAction) Action.Loading(false).emit()
+                if (emitErrorMsgAction) Action.Message(e.message ?: "some error").emit()
             }
         }
     }
@@ -79,50 +97,30 @@ abstract class BaseViewModel(val states: List<Any>) : ViewModel() {
      *  parameter: stateIndex - takes index of corresponding ViewState from States.
      *  @see states
      * */
-    protected suspend inline fun <reified T : Any?> call(response: Result<T>, stateIndex: Int) {
+    protected suspend inline fun <reified T : Any?> call(
+        response: Result<T>, stateIndex: Int,
+        onError: (Throwable?) -> Unit = {},
+        onSuccess: (Result<T>) -> Unit = {},
+    ) {
         if (response.isSuccess) {
+            onSuccess.invoke(response)
             stateList[stateIndex].postChange { copy(data = response.getOrNull()) }
             stateFlowList[stateIndex].update { it.copy(data = response.getOrNull()) }
         } else {
+            onError.invoke(response.exceptionOrNull())
             stateList[stateIndex].postChange { copy(data = null) }
             stateFlowList[stateIndex].update { it.copy(data = null) }
-            response.exceptionOrNull()?.message?.let { _action.emit(Action.Message(it)) }
+            response.exceptionOrNull()?.message?.let { emitAction(Action.Message(it)) }
         }
     }
 
-    /** emit action */
-    fun emitAction(action: Action) = launch { _action.emit(action) }
+    /** launches a coroutine and emits Action */
+    protected fun <T : Action> T.emit() = viewModelScope.launch { _action.emit(this@emit) }
 
-    open class Action {
-        data class Message(val msg: String) : Action()
-        data class Loading(val loading: Boolean = true) : Action()
-    }
+    /** use inside coroutineScope to emit Action */
+    protected suspend fun emitAction(action: Action) = _action.emit(action)
+
 }
 
-/** casts state from the BaseViewModel.statesList to it's real data Type and returns it's value.
- * @see BaseViewModel.stateList
- * */
-@Suppress("UNCHECKED_CAST")
-fun <T> MutableState<ViewState<Any>>.takeAs(): T? = try {
-    this.value.data as T
-} catch (e: Exception) {
-    null
-}
-
-/** casts state from the BaseViewModel.statesFlowList to it's real data Type and returns it with it's real value.
- * @see BaseViewModel.stateList
- * */
-@Suppress("UNCHECKED_CAST")
-fun <T> MutableStateFlow<ViewState<Any>>.takeAs(): MutableStateFlow<ViewState<T>>? = try {
-    this as MutableStateFlow<ViewState<T>>
-} catch (e: Exception) {
-    null
-}
-
-/** post change to a mutableState of something,
- *  for example data class that contains TextField values. */
-inline fun <T> MutableState<T>.postChange(copy: T.() -> T) {
-    this.value = copy(this.value)
-}
 
 // todo: consider state loss after process death?

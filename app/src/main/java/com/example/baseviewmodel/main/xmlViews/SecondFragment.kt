@@ -1,15 +1,8 @@
 package com.example.baseviewmodel.main.xmlViews
 
-import android.os.Bundle
 import androidx.fragment.app.Fragment
-import android.view.LayoutInflater
-import android.view.View
-import android.view.ViewGroup
-import androidx.navigation.fragment.findNavController
-import com.example.baseviewmodel.R
-import com.example.baseviewmodel.base.BaseFragment
+import com.example.baseviewmodel.common.base.BaseFragment
 import com.example.baseviewmodel.databinding.FragmentSecondBinding
-import com.example.baseviewmodel.main.MainVM
 import org.koin.androidx.viewmodel.ext.android.viewModel
 
 /**

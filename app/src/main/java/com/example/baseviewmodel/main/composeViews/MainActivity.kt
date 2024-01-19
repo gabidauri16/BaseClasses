@@ -1,4 +1,4 @@
-package com.example.baseviewmodel.main
+package com.example.baseviewmodel.main.composeViews
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -16,10 +16,14 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import com.example.baseviewmodel.base.BaseActionsHandler
-import com.example.baseviewmodel.base.BaseViewModel
-import com.example.baseviewmodel.base.ViewState
-import com.example.baseviewmodel.base.takeAs
+import com.example.baseviewmodel.common.base.Action
+import com.example.baseviewmodel.common.base.BaseActionsHandler
+import com.example.baseviewmodel.common.base.ViewState
+import com.example.baseviewmodel.common.extensions.takeAs
+import com.example.baseviewmodel.main.FirstModel
+import com.example.baseviewmodel.main.MainActions
+import com.example.baseviewmodel.main.MainVM
+import com.example.baseviewmodel.main.SecondModel
 import com.example.baseviewmodel.ui.theme.BaseViewModelTheme
 import org.koin.androidx.compose.koinViewModel
 
@@ -47,7 +51,7 @@ class MainActivity : ComponentActivity() {
     private fun ScreenContent(
         firstState: MutableState<ViewState<Any>>,
         secondState: MutableState<ViewState<Any>>,
-        onAction: (BaseViewModel.Action) -> Unit
+        onAction: (Action) -> Unit
     ) {
         Column(
             Modifier.fillMaxSize(),
@@ -56,11 +60,7 @@ class MainActivity : ComponentActivity() {
         ) {
             Greeting(name = firstState.takeAs<FirstModel>()?.firstData ?: "")
             Greeting(name = secondState.takeAs<SecondModel>()?.secondData ?: "")
-            Button(onClick = {
-                onAction(MainVM.GetBothDataAction)
-            }) {
-                Text(text = "CallAgain")
-            }
+            Button(onClick = { onAction(MainActions.GetBothDataAction) }) { Text(text = "CallAgain") }
         }
     }
 }

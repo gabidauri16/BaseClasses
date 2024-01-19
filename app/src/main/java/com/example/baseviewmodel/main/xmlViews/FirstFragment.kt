@@ -1,14 +1,10 @@
 package com.example.baseviewmodel.main.xmlViews
 
 import android.widget.Toast
-import androidx.navigation.fragment.findNavController
-import androidx.viewbinding.ViewBinding
-import com.example.baseviewmodel.R
-import com.example.baseviewmodel.base.BaseFragment
-import com.example.baseviewmodel.base.BaseViewModel
-import com.example.baseviewmodel.base.launchStarted
+import com.example.baseviewmodel.common.base.BaseFragment
 import com.example.baseviewmodel.databinding.FragmentFirstBinding
 import com.example.baseviewmodel.main.FirstModel
+import com.example.baseviewmodel.main.MainActions
 import com.example.baseviewmodel.main.MainVM
 import com.example.baseviewmodel.main.SecondModel
 import org.koin.androidx.viewmodel.ext.android.viewModel
@@ -21,10 +17,10 @@ class FirstFragment :
     override fun setupView() {
         withBinding {
             buttonFirst.setOnClickListener {
-                viewModel.onAction(MainVM.GetBothDataAction)
+                viewModel.onAction(MainActions.GetBothDataAction)
             }
             btnSecond.setOnClickListener {
-                viewModel.onAction(MainVM.GoToSecondScreenAction)
+                viewModel.onAction(MainActions.GoToSecondScreenAction)
             }
         }
     }
@@ -36,7 +32,7 @@ class FirstFragment :
         collectNullable<SecondModel>(1) {
             binding.tvSecond.text = this?.secondData.orEmpty()
         }
-        collectAction<MainVM.GoToSecondScreenAction> {
+        collectAction<MainActions.GoToSecondScreenAction> {
             Toast.makeText(requireContext(), it::class.java.simpleName, Toast.LENGTH_SHORT).show()
 //            findNavController().navigate(R.id.SecondFragment)
         }
