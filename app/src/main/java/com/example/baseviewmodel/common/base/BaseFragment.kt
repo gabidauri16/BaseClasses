@@ -6,13 +6,14 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.Fragment
 import androidx.viewbinding.ViewBinding
+import com.example.baseviewmodel.common.base.processDeathSurvivors.BaseSurvivorViewModel
 import com.example.baseviewmodel.common.extensions.launchStarted
 import com.example.baseviewmodel.common.extensions.takeAs
 
 typealias Inflater<T> = (inflater: LayoutInflater, view: ViewGroup?, attach: Boolean) -> T
 
-abstract class BaseFragment<VB : ViewBinding, VM : BaseViewModel>(
-    private val inflater: Inflater<VB>,
+abstract class BaseFragment<VB : ViewBinding, VM : BaseVM>(
+    private val inflater: Inflater<VB>
 ) :
     Fragment() {
     private lateinit var viewModel: VM
@@ -61,7 +62,15 @@ abstract class BaseFragment<VB : ViewBinding, VM : BaseViewModel>(
     protected inline fun <reified T : Action> collectAction(crossinline block: (T) -> Unit) {
         withVM {
             launchStarted {
-                action.collect { if (it is T) block(it) }
+                when (this@withVM) {
+                    is BaseViewModel -> {
+                        action.collect { if (it is T) block(it) }
+                    }
+
+                    is BaseSurvivorViewModel -> {
+                        action.collect { if (it is T) block(it) }
+                    }
+                }
             }
         }
     }
@@ -70,8 +79,16 @@ abstract class BaseFragment<VB : ViewBinding, VM : BaseViewModel>(
     protected fun <T> collect(stateIndex: Int, block: T.() -> Unit) {
         withVM {
             launchStarted {
-                stateFlowList[stateIndex].takeAs<T>()?.collect {
-                    it.data?.let { dataType -> block(dataType) }
+                when (this@withVM) {
+                    is BaseViewModel -> {
+                        stateFlowList[stateIndex].takeAs<T>()?.collect {
+                            it.data?.let { dataType -> block(dataType) }
+                        }
+                    }
+
+                    is BaseSurvivorViewModel -> {
+                        getState<T>(stateIndex).collect { it.data?.let(block) }
+                    }
                 }
             }
         }
@@ -81,7 +98,15 @@ abstract class BaseFragment<VB : ViewBinding, VM : BaseViewModel>(
     protected fun <T> collectNullable(stateIndex: Int, block: T?.() -> Unit) {
         withVM {
             launchStarted {
-                stateFlowList[stateIndex].takeAs<T>()?.collect { block(it.data) }
+                when (this@withVM) {
+                    is BaseViewModel -> {
+                        stateFlowList[stateIndex].takeAs<T>()?.collect { block(it.data) }
+                    }
+
+                    is BaseSurvivorViewModel -> {
+                        getState<T>(stateIndex).collect { block(it.data) }
+                    }
+                }
             }
         }
     }

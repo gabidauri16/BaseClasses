@@ -1,5 +1,6 @@
 package com.example.baseviewmodel.main.xmlViews
 
+import android.util.Log
 import android.widget.Toast
 import com.example.baseviewmodel.common.base.BaseFragment
 import com.example.baseviewmodel.databinding.FragmentFirstBinding
@@ -27,6 +28,7 @@ class FirstFragment :
 
     override fun setupObservers() {
         collectNullable<FirstModel>(0) {
+            Log.d("myLog", "firstModel collected: $this")
             binding.textviewFirst.text = this?.firstData.orEmpty()
         }
         collectNullable<SecondModel>(1) {

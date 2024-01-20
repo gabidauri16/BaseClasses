@@ -1,44 +1,24 @@
-package com.example.baseviewmodel.common.base
+package com.example.baseviewmodel.common.base.processDeathSurvivors
 
-import android.os.Parcelable
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
+import android.util.Log
+import androidx.compose.runtime.Composable
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewModelScope
-import com.example.baseviewmodel.common.extensions.postChange
+import com.example.baseviewmodel.common.base.Action
+import com.example.baseviewmodel.common.base.BaseVM
+import com.example.baseviewmodel.common.base.ViewState
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.parcelize.Parcelize
-import kotlinx.parcelize.RawValue
 
-@Parcelize
-data class ViewState<T : Any?>(val data: @RawValue T? = null) : Parcelable
-
-/** for each responseModel Type that serviceCall returns and is used in current ViewModel,
- *  this BaseViewModel class takes as a parameter list of ViewStates of each model.
- *  @see BaseViewModel.states
- *
- *  then it creates mutableStates for each viewState from the list.
- *  @see BaseViewModel.stateList
- *
- *  also has helper functions to make requestCall and it handles to save received data in the
- *  corresponding state and also emit actions of loading and showingMessage(or error).
- *
- *  use launch() in combination with call() like this :
- *  launch { call(someRepository.getFirstTestData(), 0) }
- *  @see BaseViewModel.launch
- *  @see BaseViewModel.call
- *  ------
- *  @see takeAs to get corresponding state on the uiSide.
- *
- * */
-abstract class BaseViewModel(
-    val states: List<Any>
+abstract class BaseSurvivorViewModel(
+    val states: MutableList<Any>,
+    val savedStateHandle: SavedStateHandle
 ) : ViewModel(), BaseVM {
     protected val _action = MutableSharedFlow<Action>()
     val action = _action.asSharedFlow()
@@ -47,24 +27,31 @@ abstract class BaseViewModel(
         Action.Message(throwable.message ?: "An unexpected error occurred").emit()
     }
 
-    /** for Compose */
-    val stateList = states.map { it.createState() }
-
-    /** for XML */
-    val stateFlowList = states.map { it.createStateFlow() }
-
+    init {
+        states.mapIndexed { index, value -> value.createStateFlow(index) }
+    }
 
     abstract fun onAction(action: Action)
 
-    /** creates MutableState<ViewState<EachModel>> for each element of the states.
-     * for Compose */
-    private inline fun <reified T : Any?> T.createState(): MutableState<ViewState<T>> =
-        mutableStateOf(ViewState())
+    /** Creates MutableStateFlows, restoring data from SavedStateHandle if available */
+    protected inline fun <reified T : Any> T.createStateFlow(index: Int): StateFlow<ViewState<T>> =
+        (this::class.simpleName + "$index").let { savedStateHandle.getStateFlow(it, ViewState()) }
 
-    /** creates MutableStateFlow<ViewState<EachModel>> for each element of the states.
-     * for XMl */
-    private inline fun <reified T : Any?> T.createStateFlow(): MutableStateFlow<ViewState<T>> =
-        MutableStateFlow(ViewState())
+    /** saves data to SavedStateHandle */
+    @Suppress("UNCHECKED_CAST")
+    protected suspend inline fun <reified T : Any?> saveState(stateIndex: Int, value: T?) {
+        Log.d("myLog", "saved $value")
+        (states[stateIndex]::class.simpleName + "$stateIndex").let {
+            savedStateHandle[it] = (savedStateHandle.get<T>(it) as ViewState<T>).copy(data = value)
+        }
+    }
+
+    /** Getter functions for accessing state values from SavedStateHandle */
+    fun <T : Any?> getState(stateIndex: Int): StateFlow<ViewState<T>> {
+        (states[stateIndex]::class.simpleName + "$stateIndex").let {
+            return savedStateHandle.getStateFlow(it, ViewState<T>())
+        }
+    }
 
     /** launches coroutine in viewModelScope. used in combination with call function to make requestCalls.
      *  also handles to emit message(or Error) and loading Actions.
@@ -108,12 +95,10 @@ abstract class BaseViewModel(
     ) {
         if (response.isSuccess) {
             onSuccess.invoke(response)
-            stateList[stateIndex].postChange { copy(data = response.getOrNull()) }
-            stateFlowList[stateIndex].update { it.copy(data = response.getOrNull()) }
+            saveState(stateIndex, response.getOrNull())
         } else {
             onError.invoke(response.exceptionOrNull())
-            stateList[stateIndex].postChange { copy(data = null) }
-            stateFlowList[stateIndex].update { it.copy(data = null) }
+            saveState<T>(stateIndex, null)
             response.exceptionOrNull()?.message?.let { emitAction(Action.Message(it)) }
         }
     }
@@ -124,7 +109,9 @@ abstract class BaseViewModel(
     /** use inside coroutineScope to emit Action */
     protected suspend fun emitAction(action: Action) = _action.emit(action)
 
+    /** collects StateFlow as state and returns it's data */
+    @Composable
+    fun <T : Any> getData(stateIndex: Int) =
+        this.getState<T>(stateIndex).collectAsStateWithLifecycle().value.data
 }
 
-
-// todo: consider state loss after process death?
