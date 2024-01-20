@@ -44,5 +44,34 @@ private fun getBothData() {
   <ul>
     <li><a href="#purpose">Purpose</a></li>
     <li><a href="#overview">OverView</a></li>
+    <li><a href="#onaction-function">onAction Function</a></li>
   </ul>
 </details>
+
+----------
+## onAction Function
+----------
+BaseViewModel makes u override onAction() function to do different things on each Action. <br /> 
+- Action.emit() -> extension function that launches a coroutine and emits Action. <br /> 
+```kotlin
+ override fun onAction(action: Action) {
+        when (action) {
+            MainActions.GetFirstDataAction -> getFirstData()
+            MainActions.GetSecondDataAction -> getSecondData()
+            MainActions.GetBothDataAction -> getBothData()
+            MainActions.GoToSecondScreenAction -> action.emit()
+        }
+    }
+```
+Actions can be collected very easily. <br /> 
+```kotlin
+ override fun setupObservers() {
+        collectAction<MainActions.GoToSecondScreenAction> {
+            Toast.makeText(requireContext(), it::class.java.simpleName, Toast.LENGTH_SHORT).show()
+        }
+    }
+```
+
+
+
+
