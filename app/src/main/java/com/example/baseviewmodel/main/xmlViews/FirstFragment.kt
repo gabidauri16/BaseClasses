@@ -27,9 +27,8 @@ class FirstFragment :
     }
 
     override fun setupObservers() {
-        collectNullable<FirstModel>(0) {
-            Log.d("myLog", "firstModel collected: $this")
-            binding.textviewFirst.text = this?.firstData.orEmpty()
+        collect<FirstModel>(0) {
+            binding.textviewFirst.text = firstData
         }
         collectNullable<SecondModel>(1) {
             binding.tvSecond.text = this?.secondData.orEmpty()

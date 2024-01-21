@@ -3,8 +3,8 @@ package com.example.baseviewmodel.main
 import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import com.example.baseviewmodel.common.base.Action
-import com.example.baseviewmodel.common.base.ViewState
 import com.example.baseviewmodel.common.base.processDeathSurvivors.BaseSurvivorViewModel
+import com.example.baseviewmodel.common.base.ViewState
 import com.example.baseviewmodel.repo.SomeRepository
 import kotlinx.parcelize.Parcelize
 
@@ -31,7 +31,11 @@ class MainVM(private val someRepository: SomeRepository, savedStateHandle: Saved
     }
 
     private fun getBothData() {
-        launch {
+        launch(emitLoadingAction = true, emitErrorMsgAction = true,
+            propagateCancellationException = true,
+            onStart = { Action.Message("onStart").emit() },
+            onFinish = { Action.Message("onFinish").emit() },
+            onException = { Action.Message("onExceptionAction").emit() }) {
             someRepository.apply {
                 call(getFirstTestData(), 0)
                 call(getSecondTestData(), 1)

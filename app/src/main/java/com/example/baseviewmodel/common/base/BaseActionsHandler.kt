@@ -27,14 +27,8 @@ fun BaseActionsHandler(
     LaunchedEffect(key1 = true) {
         action.collect {
             when (it) {
-                is Action.Message -> {
-                    Toast.makeText(context, it.msg, Toast.LENGTH_SHORT).show()
-                }
-
-                is Action.Loading -> {
-                    if (showLoader) loadingState.value = it.loading
-
-                }
+                is Action.Message -> Toast.makeText(context, it.msg, Toast.LENGTH_SHORT).show()
+                is Action.Loading -> if (showLoader) loadingState.value = it.loading
             }
         }
     }

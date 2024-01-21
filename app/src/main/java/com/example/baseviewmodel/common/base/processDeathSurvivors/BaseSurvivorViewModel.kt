@@ -9,12 +9,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.baseviewmodel.common.base.Action
 import com.example.baseviewmodel.common.base.BaseVM
 import com.example.baseviewmodel.common.base.ViewState
-import kotlinx.coroutines.CoroutineExceptionHandler
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 abstract class BaseSurvivorViewModel(
     val states: MutableList<Any>,
@@ -23,9 +24,9 @@ abstract class BaseSurvivorViewModel(
     protected val _action = MutableSharedFlow<Action>()
     val action = _action.asSharedFlow()
 
-    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
-        Action.Message(throwable.message ?: "An unexpected error occurred").emit()
-    }
+//    private val coroutineExceptionHandler = CoroutineExceptionHandler { _, throwable ->
+//        Action.Message(throwable.message ?: "CoroutineExceptionHandler caught An unexpected error").emit()
+//    }
 
     init {
         states.mapIndexed { index, value -> value.createStateFlow(index) }
@@ -60,26 +61,49 @@ abstract class BaseSurvivorViewModel(
     protected fun launch(
         emitLoadingAction: Boolean = true,
         emitErrorMsgAction: Boolean = false,
+        propagateCancellationException: Boolean = false,
         onStart: (() -> Unit)? = null,
         onFinish: (() -> Unit)? = null,
         onException: ((Exception) -> Unit)? = null,
         block: suspend CoroutineScope.() -> Unit,
     ) {
         viewModelScope.launch {
+//            try {
+//                launch(coroutineContext + coroutineExceptionHandler) {
+//            launch {
+            onStart?.invoke()
+            if (emitLoadingAction) emitAction(Action.Loading())
             try {
-                launch(coroutineContext + coroutineExceptionHandler) {
-                    onStart?.invoke()
-                    if (emitLoadingAction) emitAction(Action.Loading())
-                    block.invoke(this)
-                    if (emitLoadingAction) emitAction(Action.Loading(false))
-                    onFinish?.invoke()
-                }
+                block.invoke(this)
             } catch (e: Exception) {
                 onException?.invoke(e)
-                if (emitLoadingAction) Action.Loading(false).emit()
-                if (emitErrorMsgAction) Action.Message(e.message ?: "some error").emit()
+                if (emitLoadingAction) emitAction(Action.Loading(false))
+                handleException(e, emitErrorMsgAction, propagateCancellationException)
             }
+            if (emitLoadingAction) emitAction(Action.Loading(false))
+            onFinish?.invoke()
+//            }
+//            } catch (e: Exception) {
+//                onException?.invoke(e)
+//                if (emitLoadingAction) Action.Loading(false).emit()
+//                if (emitErrorMsgAction) Action.Message(e.message ?: "some error").emit()
+//            }
         }
+    }
+
+    private fun handleException(
+        e: Exception,
+        emitErrorMsgAction: Boolean,
+        propagateCancellationException: Boolean
+    ) {
+        e.printStackTrace()
+        fun emitMsg(msg: String) { if (emitErrorMsgAction) Action.Message(msg).emit() }
+        when (e) {
+            is CancellationException -> emitMsg("Cancellation Exception")
+            is IOException -> emitMsg(e.message ?: "network Error")
+            else -> emitMsg(e.message ?: "some error occurred")
+        }
+        if (propagateCancellationException) throw CancellationException()
     }
 
     /** makes serviceCall and updates corresponding State.
